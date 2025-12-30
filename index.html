@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Financial Flow</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div>
+          <h1>Financial Flow</h1>
+          <p class="subtitle">
+            Track income + spending with calm, simple clarity.
+          </p>
+        </div>
+        <div class="topbar-actions">
+          <button
+            id="exportBtn"
+            class="btn btn-ghost"
+            type="button"
+            title="Export JSON"
+          >
+            Export
+          </button>
+          <label class="btn btn-ghost file-btn" title="Import JSON">
+            Import
+            <input id="importInput" type="file" accept="application/json" />
+          </label>
+          <button
+            id="clearBtn"
+            class="btn btn-danger"
+            type="button"
+            title="Clear all data"
+          >
+            Clear
+          </button>
+        </div>
+      </header>
+
+      <main class="grid">
+        <!-- Entry -->
+        <section class="card">
+          <h2>Add entry</h2>
+
+          <form id="entryForm" class="form">
+            <div class="row">
+              <label class="field">
+                <span>Type</span>
+                <div class="segmented" role="group" aria-label="Type">
+                  <button
+                    type="button"
+                    class="seg-btn is-active"
+                    data-type="income"
+                  >
+                    Income
+                  </button>
+                  <button type="button" class="seg-btn" data-type="expense">
+                    Expense
+                  </button>
+                </div>
+              </label>
+
+              <label class="field">
+                <span>Date</span>
+                <input id="dateInput" type="date" required />
+              </label>
+            </div>
+
+            <div class="row">
+              <label class="field">
+                <span>Amount</span>
+                <input
+                  id="amountInput"
+                  type="number"
+                  inputmode="decimal"
+                  step="0.01"
+                  placeholder="e.g. 2500"
+                  required
+                />
+              </label>
+
+              <label class="field">
+                <span>Description</span>
+                <input
+                  id="descInput"
+                  type="text"
+                  maxlength="80"
+                  placeholder="e.g. groceries, tutoring, rent"
+                  required
+                />
+              </label>
+            </div>
+
+            <div class="row actions">
+              <button class="btn btn-primary" type="submit">Add</button>
+              <button id="todayBtn" class="btn btn-ghost" type="button">
+                Set date to today
+              </button>
+            </div>
+          </form>
+
+          <p class="hint">
+            Tip: enter a positive number — type determines income vs expense.
+          </p>
+        </section>
+
+        <!-- Summary -->
+        <section class="card">
+          <div class="summary-head">
+            <div>
+              <h2>Summary</h2>
+              <p class="subtitle2">View totals by period.</p>
+            </div>
+
+            <div class="summary-controls">
+              <label class="mini">
+                <span>Period</span>
+                <select id="periodSelect">
+                  <option value="day">Day</option>
+                  <option value="week">Week</option>
+                  <option value="month" selected>Month</option>
+                  <option value="year">Year</option>
+                  <option value="all">All</option>
+                </select>
+              </label>
+
+              <label class="mini">
+                <span>Reference date</span>
+                <input id="refDateInput" type="date" />
+              </label>
+
+              <button id="jumpTodayBtn" class="btn btn-ghost" type="button">
+                Today
+              </button>
+            </div>
+          </div>
+
+          <div class="stats">
+            <div class="stat">
+              <span class="label">Income</span>
+              <span id="incomeTotal" class="value">—</span>
+            </div>
+            <div class="stat">
+              <span class="label">Expenses</span>
+              <span id="expenseTotal" class="value">—</span>
+            </div>
+            <div class="stat">
+              <span class="label">Net</span>
+              <span id="netTotal" class="value">—</span>
+            </div>
+            <div class="stat">
+              <span class="label">Entries</span>
+              <span id="countTotal" class="value">—</span>
+            </div>
+          </div>
+
+          <div class="range-note" id="rangeNote">—</div>
+        </section>
+
+        <!-- Entries -->
+        <section class="card wide">
+          <div class="entries-head">
+            <h2>Entries</h2>
+            <div class="entries-tools">
+              <input
+                id="searchInput"
+                class="search"
+                type="search"
+                placeholder="Search description…"
+              />
+              <select id="sortSelect" class="sort">
+                <option value="dateDesc" selected>Newest first</option>
+                <option value="dateAsc">Oldest first</option>
+                <option value="amountDesc">Largest amount</option>
+                <option value="amountAsc">Smallest amount</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="emptyState" class="empty">
+            No entries yet. Add your first income or expense above.
+          </div>
+
+          <div class="table-wrap">
+            <table class="table" aria-label="Entries table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Description</th>
+                  <th>Type</th>
+                  <th class="right">Amount</th>
+                  <th class="right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="entriesTbody"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <span>Stored locally in your browser (localStorage).</span>
+      </footer>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
