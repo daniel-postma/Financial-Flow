@@ -94,6 +94,25 @@
               </label>
             </div>
 
+            <!-- Category (optional) -->
+            <div class="row">
+              <label class="field">
+                <span>Category (optional)</span>
+                <input
+                  id="categoryInput"
+                  type="text"
+                  list="categoryDatalist"
+                  placeholder="e.g. Food, Rent, Transport"
+                />
+              </label>
+
+              <!-- Spacer so the row stays 2 columns on desktop (hidden on mobile via CSS) -->
+              <div class="field ghost-field" aria-hidden="true">
+                <span>&nbsp;</span>
+                <div class="ghost-box"></div>
+              </div>
+            </div>
+
             <div class="row actions">
               <button class="btn btn-primary" type="submit">Add</button>
               <button id="todayBtn" class="btn btn-ghost" type="button">
@@ -169,7 +188,7 @@
                 id="searchInput"
                 class="search"
                 type="search"
-                placeholder="Search description…"
+                placeholder="Search description or category…"
               />
               <select id="sortSelect" class="sort">
                 <option value="dateDesc" selected>Newest first</option>
@@ -190,6 +209,7 @@
                 <tr>
                   <th>Date</th>
                   <th>Description</th>
+                  <th>Category</th>
                   <th>Type</th>
                   <th class="right">Amount</th>
                   <th class="right">Action</th>
@@ -201,11 +221,35 @@
         </section>
       </main>
 
+      <!-- Footer: replace the localStorage line with Ko-fi button -->
       <footer class="footer">
-        <span>Stored locally in your browser (localStorage).</span>
+        <div class="footer-support">
+          <span class="footer-note"
+            >Data is stored locally on your device, click export to permentantly
+            save file and prevent loss of data</span
+          >
+          <span class="footer-dot">•</span>
+
+          <!-- Ko-fi widget renders into page; we keep it in footer zone -->
+          <span id="kofi-footer-slot"></span>
+        </div>
       </footer>
     </div>
 
+    <!-- Category suggestions -->
+    <datalist id="categoryDatalist"></datalist>
+
     <script src="script.js"></script>
+
+    <!-- Ko-fi support widget -->
+    <script src="https://storage.ko-fi.com/cdn/scripts/overlay-widget.js"></script>
+    <script>
+      kofiWidgetOverlay.draw("danielgagepostma", {
+        type: "floating-chat",
+        "floating-chat.donateButton.text": "Support Us",
+        "floating-chat.donateButton.background-color": "#5cb85c",
+        "floating-chat.donateButton.text-color": "#fff",
+      });
+    </script>
   </body>
 </html>

@@ -1,14 +1,37 @@
 // Financial Flow — script.js
-// Super simple income/expense tracker with localStorage + mobile-friendly labeled table cells.
+// Income/expense tracker with optional Categories + recategorize from UI.
+// LocalStorage persistence + export/import + mobile-friendly table cards.
 
 (() => {
   const STORAGE_KEY = "financialFlowEntries_v1";
+
+  // Default category suggestions (users can type anything they want)
+  const DEFAULT_CATEGORIES = [
+    "Food",
+    "Rent",
+    "Transport",
+    "Utilities",
+    "Groceries",
+    "Health",
+    "Fun",
+    "Shopping",
+    "Subscriptions",
+    "Gifts",
+    "Travel",
+    "Bills",
+    "Salary",
+    "Freelance",
+    "Other",
+  ];
 
   // ===== DOM =====
   const entryForm = document.getElementById("entryForm");
   const dateInput = document.getElementById("dateInput");
   const amountInput = document.getElementById("amountInput");
   const descInput = document.getElementById("descInput");
+  const categoryInput = document.getElementById("categoryInput");
+
+  const categoryDatalist = document.getElementById("categoryDatalist");
 
   const segButtons = Array.from(document.querySelectorAll(".seg-btn"));
   const todayBtn = document.getElementById("todayBtn");
@@ -47,7 +70,6 @@
   }
 
   function parseISODate(iso) {
-    // "YYYY-MM-DD" -> Date at local midnight
     const [y, m, d] = String(iso).split("-").map(Number);
     return new Date(y, (m || 1) - 1, d || 1, 0, 0, 0, 0);
   }
@@ -63,9 +85,8 @@
   }
 
   function startOfISOWeek(d) {
-    // Monday-based week
     const x = startOfDay(d);
-    const day = x.getDay(); // Sun=0 ... Sat=6
+    const day = x.getDay(); // Sun=0..Sat=6
     const diff = (day === 0 ? -6 : 1) - day; // back to Monday
     return addDays(x, diff);
   }
@@ -114,6 +135,11 @@
     return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
   }
 
+  function normalizeCategory(cat) {
+    const s = String(cat || "").trim();
+    return s; // keep it simple; user can type anything
+  }
+
   // ===== STORAGE =====
   function load() {
     try {
@@ -123,6 +149,17 @@
     } catch {
       entries = [];
     }
+
+    // Ensure older entries have category field
+    entries = entries.map((e) => ({
+      id: e.id || uid(),
+      type: e.type === "expense" ? "expense" : "income",
+      date: e.date || toISODate(new Date()),
+      amount: Number(e.amount) || 0,
+      desc: String(e.desc || "").slice(0, 80),
+      category: normalizeCategory(e.category || ""),
+      createdAt: Number(e.createdAt) || Date.now(),
+    }));
   }
 
   function save() {
@@ -137,7 +174,34 @@
     });
   }
 
-  // ===== DATA FILTERING =====
+  // ===== CATEGORY SUGGESTIONS =====
+  function getAllCategories() {
+    const set = new Set(DEFAULT_CATEGORIES);
+    for (const e of entries) {
+      const c = normalizeCategory(e.category);
+      if (c) set.add(c);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }
+
+  function renderCategoryDatalist() {
+    if (!categoryDatalist) return;
+    const cats = getAllCategories();
+    categoryDatalist.innerHTML = cats
+      .map((c) => `<option value="${escapeHtml(c)}"></option>`)
+      .join("");
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  // ===== FILTERING =====
   function getFilteredEntries() {
     const period = periodSelect.value;
     const refDate = parseISODate(refDateInput.value);
@@ -156,16 +220,15 @@
       });
     }
 
-    // search filter
+    // search filter (desc + category)
     if (q) {
-      filtered = filtered.filter((e) =>
-        String(e.desc || "")
-          .toLowerCase()
-          .includes(q)
-      );
+      filtered = filtered.filter((e) => {
+        const hay = `${e.desc || ""} ${e.category || ""}`.toLowerCase();
+        return hay.includes(q);
+      });
     }
 
-    // sorting
+    // sort
     filtered.sort((a, b) => {
       const da = parseISODate(a.date).getTime();
       const db = parseISODate(b.date).getTime();
@@ -198,12 +261,7 @@
       else expense += amt;
     }
 
-    return {
-      income,
-      expense,
-      net: income - expense,
-      count: list.length,
-    };
+    return { income, expense, net: income - expense, count: list.length };
   }
 
   // ===== RENDER =====
@@ -219,7 +277,6 @@
     netTotalEl.textContent = formatMoney(totals.net);
     countTotalEl.textContent = String(totals.count);
 
-    // Net color
     netTotalEl.style.color = totals.net >= 0 ? "var(--green)" : "var(--danger)";
 
     if (period === "all") {
@@ -242,6 +299,18 @@
     return td;
   }
 
+  function updateEntryCategory(id, newCategory) {
+    const cat = normalizeCategory(newCategory);
+    const idx = entries.findIndex((e) => e.id === id);
+    if (idx === -1) return;
+
+    entries[idx].category = cat;
+    save();
+    renderCategoryDatalist(); // new category becomes available immediately
+    // no need to full re-render the whole table for a small change, but simple is fine:
+    render();
+  }
+
   function renderTable(filtered) {
     entriesTbody.innerHTML = "";
     emptyState.style.display = filtered.length ? "none" : "block";
@@ -254,6 +323,31 @@
 
       // Description
       tr.appendChild(makeCell("Description", e.desc));
+
+      // Category (editable)
+      const catInput = document.createElement("input");
+      catInput.type = "text";
+      catInput.value = e.category || "";
+      catInput.placeholder = "—";
+      catInput.className = "inline-input";
+      catInput.setAttribute("list", "categoryDatalist");
+      catInput.setAttribute("aria-label", "Edit category");
+
+      // Save on change or blur, and also Enter
+      catInput.addEventListener("change", () =>
+        updateEntryCategory(e.id, catInput.value)
+      );
+      catInput.addEventListener("blur", () =>
+        updateEntryCategory(e.id, catInput.value)
+      );
+      catInput.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter") {
+          ev.preventDefault();
+          catInput.blur();
+        }
+      });
+
+      tr.appendChild(makeCell("Category", catInput));
 
       // Type badge
       const badge = document.createElement("span");
@@ -288,7 +382,7 @@
   }
 
   // ===== CRUD =====
-  function addEntry({ type, date, amount, desc }) {
+  function addEntry({ type, date, amount, desc, category }) {
     entries.push({
       id: uid(),
       type: type === "expense" ? "expense" : "income",
@@ -297,15 +391,18 @@
       desc: String(desc || "")
         .trim()
         .slice(0, 80),
+      category: normalizeCategory(category || ""),
       createdAt: Date.now(),
     });
     save();
+    renderCategoryDatalist();
     render();
   }
 
   function deleteEntry(id) {
     entries = entries.filter((e) => e.id !== id);
     save();
+    renderCategoryDatalist();
     render();
   }
 
@@ -325,7 +422,7 @@
   function exportData() {
     const payload = {
       app: "Financial Flow",
-      version: 1,
+      version: 2,
       exportedAt: new Date().toISOString(),
       entries,
     };
@@ -363,6 +460,7 @@
             date: e.date,
             amount: Number(e.amount) || 0,
             desc: String(e.desc || "").slice(0, 80),
+            category: normalizeCategory(e.category || ""),
             createdAt: Number(e.createdAt) || Date.now(),
           }));
 
@@ -372,6 +470,7 @@
         entries = Array.from(map.values());
 
         save();
+        renderCategoryDatalist();
         render();
       } catch {
         alert("Import failed: invalid JSON file.");
@@ -402,15 +501,16 @@
     const date = dateInput.value;
     const desc = descInput.value;
     const amount = Number(amountInput.value);
+    const category = categoryInput ? categoryInput.value : "";
 
     if (!date) return alert("Please select a date.");
     if (!String(desc).trim()) return alert("Please enter a description.");
     if (!Number.isFinite(amount) || amount <= 0)
       return alert("Amount must be a positive number.");
 
-    addEntry({ type: activeType, date, amount, desc });
+    addEntry({ type: activeType, date, amount, desc, category });
 
-    // keep date, clear the rest
+    // keep date + category for fast repeated entries; clear amount/desc
     amountInput.value = "";
     descInput.value = "";
     descInput.focus();
@@ -426,6 +526,7 @@
     if (!ok) return;
     entries = [];
     save();
+    renderCategoryDatalist();
     render();
   });
 
@@ -440,13 +541,12 @@
   function init() {
     load();
 
-    const today = new Date();
-    const todayISO = toISODate(today);
-
+    const todayISO = toISODate(new Date());
     dateInput.value = todayISO;
     refDateInput.value = todayISO;
 
     setActiveType("income");
+    renderCategoryDatalist();
     render();
   }
 

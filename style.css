@@ -562,3 +562,60 @@ select:focus {
     padding: 10px 0;
   }
 }
+
+/* Category inline edit input inside table */
+.inline-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.inline-input:focus {
+  border-color: rgba(31, 138, 76, 0.45);
+  box-shadow: 0 0 0 4px var(--greenSoft);
+  outline: none;
+}
+
+/* Makes the “empty” second column in the category row invisible on desktop */
+.ghost-field {
+  visibility: hidden;
+}
+.ghost-box {
+  height: 1px;
+}
+
+/* On mobile (where rows stack), show the category field normally and remove the empty spacer */
+@media (max-width: 640px) {
+  .ghost-field {
+    display: none;
+  }
+}
+
+.footer-support {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.footer-note {
+  color: var(--muted);
+  font-size: 12.5px;
+}
+
+.footer-dot {
+  color: rgba(15, 42, 26, 0.25);
+}
+
+/* On small screens keep it readable */
+@media (max-width: 640px) {
+  .footer-dot {
+    display: none;
+  }
+  .footer-support {
+    gap: 6px;
+  }
+}
