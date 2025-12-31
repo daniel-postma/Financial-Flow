@@ -13,7 +13,7 @@
         <div>
           <h1>Financial Flow</h1>
           <p class="subtitle">
-            Track income + spending with calm, simple clarity.
+            Track income + outflow with calm, simple clarity.
           </p>
         </div>
         <div class="topbar-actions">
@@ -57,8 +57,9 @@
                   >
                     Income
                   </button>
+                  <!-- Keep data-type="expense" for compatibility; label becomes Outflow -->
                   <button type="button" class="seg-btn" data-type="expense">
-                    Expense
+                    Outflow
                   </button>
                 </div>
               </label>
@@ -106,7 +107,6 @@
                 />
               </label>
 
-              <!-- Spacer so the row stays 2 columns on desktop (hidden on mobile via CSS) -->
               <div class="field ghost-field" aria-hidden="true">
                 <span>&nbsp;</span>
                 <div class="ghost-box"></div>
@@ -122,7 +122,7 @@
           </form>
 
           <p class="hint">
-            Tip: enter a positive number — type determines income vs expense.
+            Tip: enter a positive number — type determines income vs outflow.
           </p>
         </section>
 
@@ -163,7 +163,8 @@
               <span id="incomeTotal" class="value">—</span>
             </div>
             <div class="stat">
-              <span class="label">Expenses</span>
+              <span class="label">Outflow</span>
+              <!-- Keep id="expenseTotal" for compatibility -->
               <span id="expenseTotal" class="value">—</span>
             </div>
             <div class="stat">
@@ -200,7 +201,7 @@
           </div>
 
           <div id="emptyState" class="empty">
-            No entries yet. Add your first income or expense above.
+            No entries yet. Add your first income or outflow above.
           </div>
 
           <div class="table-wrap">
@@ -221,27 +222,21 @@
         </section>
       </main>
 
-      <!-- Footer: replace the localStorage line with Ko-fi button -->
       <footer class="footer">
         <div class="footer-support">
-          <span class="footer-note"
-            >Data is stored locally on your device, click export to permentantly
-            save file and prevent loss of data</span
-          >
+          <span class="footer-note">
+            Data is stored locally on your device, click export to permentantly
+            save file and prevent loss of data
+          </span>
           <span class="footer-dot">•</span>
-
-          <!-- Ko-fi widget renders into page; we keep it in footer zone -->
           <span id="kofi-footer-slot"></span>
         </div>
       </footer>
     </div>
 
-    <!-- Category suggestions -->
     <datalist id="categoryDatalist"></datalist>
 
     <script src="script.js"></script>
-
-    <!-- Ko-fi support widget -->
 
     <script
       type="text/javascript"

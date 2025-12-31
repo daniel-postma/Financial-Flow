@@ -1,9 +1,14 @@
 // Financial Flow — script.js
-// Income/expense tracker with optional Categories + recategorize from UI.
+// Income/outflow tracker with optional Categories + recategorize from UI.
 // LocalStorage persistence + export/import + mobile-friendly table cards.
 
 (() => {
   const STORAGE_KEY = "financialFlowEntries_v1";
+
+  // Canonical types (we still accept legacy "expense" on load/import/UI)
+  const TYPE_INCOME = "income";
+  const TYPE_OUTFLOW = "outflow";
+  const LEGACY_EXPENSE = "expense";
 
   // Default category suggestions (users can type anything they want)
   const DEFAULT_CATEGORIES = [
@@ -41,7 +46,7 @@
   const jumpTodayBtn = document.getElementById("jumpTodayBtn");
 
   const incomeTotalEl = document.getElementById("incomeTotal");
-  const expenseTotalEl = document.getElementById("expenseTotal");
+  const expenseTotalEl = document.getElementById("expenseTotal"); // id can stay "expenseTotal"
   const netTotalEl = document.getElementById("netTotal");
   const countTotalEl = document.getElementById("countTotal");
   const rangeNoteEl = document.getElementById("rangeNote");
@@ -57,7 +62,7 @@
 
   // ===== STATE =====
   let entries = [];
-  let activeType = "income";
+  let activeType = TYPE_INCOME;
 
   // ===== HELPERS =====
   const pad2 = (n) => String(n).padStart(2, "0");
@@ -130,14 +135,19 @@
   }
 
   function uid() {
-    if (crypto && typeof crypto.randomUUID === "function")
+    if (globalThis.crypto && typeof crypto.randomUUID === "function")
       return crypto.randomUUID();
     return `${Date.now()}_${Math.random().toString(16).slice(2)}`;
   }
 
   function normalizeCategory(cat) {
-    const s = String(cat || "").trim();
-    return s; // keep it simple; user can type anything
+    return String(cat || "").trim();
+  }
+
+  function canonicalType(t) {
+    if (t === TYPE_INCOME) return TYPE_INCOME;
+    if (t === TYPE_OUTFLOW || t === LEGACY_EXPENSE) return TYPE_OUTFLOW;
+    return TYPE_INCOME;
   }
 
   // ===== STORAGE =====
@@ -150,10 +160,10 @@
       entries = [];
     }
 
-    // Ensure older entries have category field
+    // Normalize + migrate legacy "expense" -> "outflow"
     entries = entries.map((e) => ({
       id: e.id || uid(),
-      type: e.type === "expense" ? "expense" : "income",
+      type: canonicalType(e.type),
       date: e.date || toISODate(new Date()),
       amount: Number(e.amount) || 0,
       desc: String(e.desc || "").slice(0, 80),
@@ -168,9 +178,17 @@
 
   // ===== UI STATE =====
   function setActiveType(type) {
-    activeType = type === "expense" ? "expense" : "income";
+    activeType = canonicalType(type);
+
+    // support old HTML data-type="expense" OR new data-type="outflow"
     segButtons.forEach((btn) => {
-      btn.classList.toggle("is-active", btn.dataset.type === activeType);
+      const bt = btn.dataset.type;
+      const isForOutflow = bt === TYPE_OUTFLOW || bt === LEGACY_EXPENSE;
+      const isActive =
+        (activeType === TYPE_INCOME && bt === TYPE_INCOME) ||
+        (activeType === TYPE_OUTFLOW && isForOutflow);
+
+      btn.classList.toggle("is-active", isActive);
     });
   }
 
@@ -184,14 +202,6 @@
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }
 
-  function renderCategoryDatalist() {
-    if (!categoryDatalist) return;
-    const cats = getAllCategories();
-    categoryDatalist.innerHTML = cats
-      .map((c) => `<option value="${escapeHtml(c)}"></option>`)
-      .join("");
-  }
-
   function escapeHtml(s) {
     return String(s)
       .replaceAll("&", "&amp;")
@@ -199,6 +209,14 @@
       .replaceAll(">", "&gt;")
       .replaceAll('"', "&quot;")
       .replaceAll("'", "&#039;");
+  }
+
+  function renderCategoryDatalist() {
+    if (!categoryDatalist) return;
+    const cats = getAllCategories();
+    categoryDatalist.innerHTML = cats
+      .map((c) => `<option value="${escapeHtml(c)}"></option>`)
+      .join("");
   }
 
   // ===== FILTERING =====
@@ -253,15 +271,15 @@
 
   function computeTotals(list) {
     let income = 0;
-    let expense = 0;
+    let outflow = 0;
 
     for (const e of list) {
       const amt = Number(e.amount) || 0;
-      if (e.type === "income") income += amt;
-      else expense += amt;
+      if (e.type === TYPE_INCOME) income += amt;
+      else outflow += amt;
     }
 
-    return { income, expense, net: income - expense, count: list.length };
+    return { income, outflow, net: income - outflow, count: list.length };
   }
 
   // ===== RENDER =====
@@ -273,11 +291,18 @@
     const totals = computeTotals(filtered);
 
     incomeTotalEl.textContent = formatMoney(totals.income);
-    expenseTotalEl.textContent = formatMoney(totals.expense);
-    netTotalEl.textContent = formatMoney(totals.net);
+    expenseTotalEl.textContent = formatMoney(totals.outflow);
+
+    // IMPORTANT: remove "-" sign when net is negative (show absolute, color blue)
+    const netIsProfit = totals.net >= 0;
+    netTotalEl.textContent = netIsProfit
+      ? formatMoney(totals.net)
+      : formatMoney(Math.abs(totals.net));
+
     countTotalEl.textContent = String(totals.count);
 
-    netTotalEl.style.color = totals.net >= 0 ? "var(--green)" : "var(--danger)";
+    // Profit = green; Loss = blue
+    netTotalEl.style.color = netIsProfit ? "var(--green)" : "var(--blue)";
 
     if (period === "all") {
       rangeNoteEl.textContent = "Showing: ALL TIME";
@@ -306,8 +331,7 @@
 
     entries[idx].category = cat;
     save();
-    renderCategoryDatalist(); // new category becomes available immediately
-    // no need to full re-render the whole table for a small change, but simple is fine:
+    renderCategoryDatalist();
     render();
   }
 
@@ -318,10 +342,7 @@
     for (const e of filtered) {
       const tr = document.createElement("tr");
 
-      // Date
       tr.appendChild(makeCell("Date", e.date));
-
-      // Description
       tr.appendChild(makeCell("Description", e.desc));
 
       // Category (editable)
@@ -333,7 +354,6 @@
       catInput.setAttribute("list", "categoryDatalist");
       catInput.setAttribute("aria-label", "Edit category");
 
-      // Save on change or blur, and also Enter
       catInput.addEventListener("change", () =>
         updateEntryCategory(e.id, catInput.value)
       );
@@ -352,14 +372,14 @@
       // Type badge
       const badge = document.createElement("span");
       badge.className = `badge ${e.type}`;
-      badge.textContent = e.type === "income" ? "Income" : "Expense";
+      badge.textContent = e.type === TYPE_INCOME ? "Income" : "Outflow";
       tr.appendChild(makeCell("Type", badge));
 
-      // Amount
+      // Amount (IMPORTANT: no "-" prefix for outflow)
       const amtSpan = document.createElement("span");
       amtSpan.className = `amount ${e.type}`;
       amtSpan.textContent =
-        (e.type === "income" ? "+ " : "- ") +
+        (e.type === TYPE_INCOME ? "+ " : "") +
         formatMoney(Number(e.amount) || 0);
       tr.appendChild(makeCell("Amount", amtSpan, "right"));
 
@@ -385,7 +405,7 @@
   function addEntry({ type, date, amount, desc, category }) {
     entries.push({
       id: uid(),
-      type: type === "expense" ? "expense" : "income",
+      type: canonicalType(type),
       date,
       amount: Number(amount),
       desc: String(desc || "")
@@ -394,6 +414,7 @@
       category: normalizeCategory(category || ""),
       createdAt: Date.now(),
     });
+
     save();
     renderCategoryDatalist();
     render();
@@ -422,7 +443,7 @@
   function exportData() {
     const payload = {
       app: "Financial Flow",
-      version: 2,
+      version: 3,
       exportedAt: new Date().toISOString(),
       entries,
     };
@@ -451,12 +472,14 @@
           .filter(
             (e) =>
               e &&
-              (e.type === "income" || e.type === "expense") &&
+              (e.type === TYPE_INCOME ||
+                e.type === TYPE_OUTFLOW ||
+                e.type === LEGACY_EXPENSE) &&
               typeof e.date === "string"
           )
           .map((e) => ({
             id: e.id || uid(),
-            type: e.type,
+            type: canonicalType(e.type),
             date: e.date,
             amount: Number(e.amount) || 0,
             desc: String(e.desc || "").slice(0, 80),
@@ -464,7 +487,6 @@
             createdAt: Number(e.createdAt) || Date.now(),
           }));
 
-        // Merge by id (import wins)
         const map = new Map(entries.map((e) => [e.id, e]));
         for (const e of cleaned) map.set(e.id, e);
         entries = Array.from(map.values());
@@ -510,9 +532,18 @@
 
     addEntry({ type: activeType, date, amount, desc, category });
 
-    // keep date + category for fast repeated entries; clear amount/desc
+    // keep date for fast repeated entries; clear amount/desc always
     amountInput.value = "";
     descInput.value = "";
+
+    // IMPORTANT: clear category after EVERY add (explicit + mobile friendly)
+    if (categoryInput) {
+      categoryInput.blur();
+      categoryInput.value = "";
+      categoryInput.dispatchEvent(new Event("input", { bubbles: true }));
+      categoryInput.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+
     descInput.focus();
   });
 
@@ -545,7 +576,7 @@
     dateInput.value = todayISO;
     refDateInput.value = todayISO;
 
-    setActiveType("income");
+    setActiveType(TYPE_INCOME);
     renderCategoryDatalist();
     render();
   }

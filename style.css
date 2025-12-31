@@ -9,6 +9,9 @@
   --green2: #22a05a;
   --greenSoft: rgba(31, 138, 76, 0.12);
 
+  /* NEW: calm blue for “loss” (net negative) + outflow styling */
+  --blue: #72a4f2;
+
   --danger: #c0392b;
 
   --shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
@@ -388,17 +391,32 @@ select:focus {
   background: rgba(31, 138, 76, 0.1);
 }
 
+/* UPDATED: outflow uses calm blue instead of danger red */
+.badge.outflow {
+  background: rgba(114, 164, 242, 0.14);
+  border-color: rgba(114, 164, 242, 0.28);
+}
+
+/* Keep legacy styling just in case old DOM/classes still exist */
 .badge.expense {
-  background: rgba(192, 57, 43, 0.08);
-  border-color: rgba(192, 57, 43, 0.18);
+  background: rgba(114, 164, 242, 0.14);
+  border-color: rgba(114, 164, 242, 0.28);
 }
 
 .amount.income {
   color: var(--green);
   font-weight: 800;
 }
+
+/* UPDATED: outflow amounts are blue (not red) */
+.amount.outflow {
+  color: var(--blue);
+  font-weight: 800;
+}
+
+/* Keep legacy class mapping */
 .amount.expense {
-  color: var(--danger);
+  color: var(--blue);
   font-weight: 800;
 }
 
