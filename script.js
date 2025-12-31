@@ -552,3 +552,31 @@
 
   init();
 })();
+/* Mobile Ko-fi bottom bar */
+.kofi-mobile-bar {
+  display: none;               /* becomes flex on mobile via JS */
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  justify-content: center;
+  align-items: center;
+  padding: 10px 12px;
+  z-index: 9999;
+  background: rgba(255, 255, 255, 0.92);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(8px);
+}
+
+/* Dark mode support */
+html[data-theme="dark"] .kofi-mobile-bar {
+  background: rgba(17, 17, 17, 0.92);
+  border-top-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Prevent content from being hidden behind the fixed bar on mobile */
+@media (max-width: 680px) {
+  .app {
+    padding-bottom: 72px;
+  }
+}
