@@ -335,6 +335,17 @@
     render();
   }
 
+  // NEW: allow fixing mistakes by switching type after entry is created
+  function updateEntryType(id, newType) {
+    const t = canonicalType(newType);
+    const idx = entries.findIndex((e) => e.id === id);
+    if (idx === -1) return;
+
+    entries[idx].type = t;
+    save();
+    render();
+  }
+
   function renderTable(filtered) {
     entriesTbody.innerHTML = "";
     emptyState.style.display = filtered.length ? "none" : "block";
@@ -369,10 +380,29 @@
 
       tr.appendChild(makeCell("Category", catInput));
 
-      // Type badge
+      // Type badge (click to toggle Income ⇄ Outflow)
       const badge = document.createElement("span");
       badge.className = `badge ${e.type}`;
       badge.textContent = e.type === TYPE_INCOME ? "Income" : "Outflow";
+
+      badge.style.cursor = "pointer";
+      badge.title = "Click to switch Income / Outflow";
+      badge.setAttribute("role", "button");
+      badge.tabIndex = 0;
+
+      function toggleType() {
+        const next = e.type === TYPE_INCOME ? TYPE_OUTFLOW : TYPE_INCOME;
+        updateEntryType(e.id, next);
+      }
+
+      badge.addEventListener("click", toggleType);
+      badge.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          toggleType();
+        }
+      });
+
       tr.appendChild(makeCell("Type", badge));
 
       // Amount (IMPORTANT: no "-" prefix for outflow)
